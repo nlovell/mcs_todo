@@ -35,7 +35,7 @@
     </head>
     <body class="antialiased">
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-            <span class="navbar-brand">Todo list</span>
+            <span class="navbar-brand">To-Do list</span>
         </nav>
 
         <br>
@@ -53,7 +53,7 @@
                             </div>
                             <input v-model="task.task" class="task_text" :class="{'done':task.done==1}" @blur="update_task_text(tast_index)">
                             <div class="task_remove d-inline-flex justify-center">
-                                <div>X</div>
+                                <input type="submit" value="X" @click="removeTask(tast_index)" />
                             </div>
                         </div>
 
@@ -65,8 +65,6 @@
                 </div>
             </div>
         </div>
-
-
     <script>
 
         const app = new Vue({
@@ -76,46 +74,105 @@
                 tasks: []
             },
             methods: {
+
                 addTask: function () {
-                    axios.post('/api/tasks/', {
-                        'task':this.new_task_text,
+                    if(this.new_task_text.length > 0) {
+                        axios.post('/api/tasks/', {
+                            'task': this.new_task_text,
+                        }).then(function (response) {
+                            if (response.data.success) {
+                                console.log('Successfully added task!')
+                                app.tasks.push({
+                                    'done': '0',
+                                    'task': app.new_task_text,
+                                    'id': response.data.task_id,
+                                });
+                                app.new_task_text = '';
+                            } else {
+                                console.log(response.data);
+                                alert('Something went wrong, check console.')
+                            }
+                        }).catch(function (error) {
+                            alert('Axios error 1');
+                            alert(error);
+                        });
+                    }
+                },
+                task_done_toggle: function (tast_index) {
+                    console.log(this.tasks[tast_index]);
+                    var task = this.tasks[tast_index];
+
+                    task.done = 1 - task.done;
+                    console.log("puzzling");
+                    console.log(task);
+                    console.log(task.done);
+                    axios.post('/api/tasks/' + task.id, {
+                        '_method' : 'put',
+                        'task': task.task,
+                        'done' : task.done,
                     }).then(function (response) {
                         if (response.data.success) {
-                            console.log('Successfully added task!')
-                            app.tasks.push({
-                                'done': '0',
-                                'task': app.new_task_text,
-                            });
-                            app.new_task_text = '';
+                            console.log('Successfully updated status!')
                         } else {
                             console.log(response.data);
                             alert('Something went wrong, check console.')
                         }
                     }).catch(function (error) {
-                        alert('Axios error 1');
+                        alert('Axios Error 1 - 500');
                         alert(error);
                     });
-                },
-                task_done_toggle: function (tast_index) {
-                    console.log(this.tasks[tast_index])
                 },
                 update_task_text: function (tast_index) {
                     var task = this.tasks[tast_index];
-                    axios.post('/api/tasks/'+task.id, {
-                        '_method':'put',
-                        'task':task.task,
-                    }).then(function (response) {
-                        if (response.data.success) {
-                            console.log('Successfully updated task!')
-                        } else {
-                            console.log(response.data);
-                            alert('Something went wrong, check console.')
+                    console.log(task.task);
+                        if(task.task != ""){
+                        axios.post('/api/tasks/'+task.id, {
+                            '_method':'put',
+                            'task':task.task,
+                            'done':task.done,
+                        }).then(function (response) {
+                            if (response.data.success) {
+                                console.log('Successfully updated task!');
+                            } else {
+                                console.log(response.data);
+                                alert('Something went wrong, check console.');
+                            }
+                        }).catch(function (error) {
+                            alert('Axios Error 1 - 500');
+                            alert(error);
+                        });
+                    } else {
+                            task.task = "This field cannot be blank.";
                         }
-                    }).catch(function (error) {
-                        alert('Axios error 1');
-                        alert(error);
-                    });
                 },
+
+                removeTask: function(tast_index){
+
+                    if (confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+                        var task = this.tasks[tast_index];
+                        axios.delete('/api/tasks/'+task.id, {
+                            '_method':'delete',
+                            'task':task.task,
+                        }).then(function (response) {
+                            if (response.data.success) {
+                                console.log('Successfully removed task!')
+                            } else {
+                                console.log(response.data);
+                                alert('Something went wrong, check console.')
+                            }
+                        }).catch(function (error) {
+                            alert('Axios Error 1 - 500');
+                            alert(error);
+                        });
+                        app.tasks.splice(tast_index, 1);
+
+                    } else {
+                        console.log('Delete operation abandoned by user.');
+                    }
+                },
+
+
+                //Called on page load
                 init: function () {
                     axios.get('/api/tasks/').then(function (response) {
                         app.tasks = response.data;
@@ -126,6 +183,7 @@
                 }
             },
 
+            // "Mounted" discerns a function to be called on page load (mounting)
             mounted: function () {
                 this.init();
             }

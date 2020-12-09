@@ -24,7 +24,7 @@ class TaskController extends Controller
      * Store a newly created resource in storage.
      *
      * @param Request $request
-     * @return Response
+     * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
     {
@@ -56,13 +56,14 @@ class TaskController extends Controller
      *
      * @param Request $request
      * @param  int  $id
-     * @return Response
+     * @return \Illuminate\Http\JsonResponse
      */
     public function update(Request $request, $id)
     {
         $data = $request->input();
         $validator = Validator::make($data, [
             'task' => 'required|max:255',
+            'done' => 'nullable',
         ]);
         if($validator->fails()){
             return response()->json([
@@ -73,6 +74,7 @@ class TaskController extends Controller
 
         $task = Tasks::findOrFail($id);
         $task->task = $data['task'];
+        $task->done = $data['done'];
         $task->save();
 
         return response()->json([
@@ -85,10 +87,15 @@ class TaskController extends Controller
      * Remove the specified resource from storage.
      *
      * @param  int  $id
-     * @return Response
+     * @return \Illuminate\Http\JsonResponse
      */
     public function destroy($id)
     {
-        //
+        $task = Tasks::find($id);
+
+        $task->delete();
+
+        return response()->json([
+            'success' => true,]);
     }
 }
